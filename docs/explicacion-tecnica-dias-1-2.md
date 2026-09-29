@@ -85,7 +85,7 @@ uvicorn app.main:app --reload
 
 Tu FastAPI corre en `127.0.0.1:8000`, una dirección privada de tu máquina. Meta necesita mandarte mensajes desde **sus** servidores, en algún lugar de internet — y no tiene ninguna forma de llegar a una dirección que solo existe dentro de tu compu.
 
-ngrok resuelve esto abriendo un **túnel**: le decís "exponé lo que está corriendo en el puerto tal", y te da una URL pública (algo como `https://create-dork-petroleum.ngrok-free.dev`) que reenvía automáticamente cualquier pedido que le llegue, directo hacia ese puerto de tu máquina.
+ngrok resuelve esto abriendo un **túnel**: le decís "exponé lo que está corriendo en el puerto tal", y te da una URL pública (algo como `https://<your-subdomain>.ngrok-free.dev`) que reenvía automáticamente cualquier pedido que le llegue, directo hacia ese puerto de tu máquina.
 
 ### Un detalle importante que usamos anoche
 
@@ -103,7 +103,7 @@ Es una página que corre localmente y te muestra, en vivo, **cada petición HTTP
 
 ### Una corrección sobre el plan gratuito (dato verificado el 6 ago)
 
-Durante el Día 2 asumimos que ngrok asigna un dominio nuevo al azar en cada reinicio. **Es incorrecto.** Toda cuenta de ngrok, incluso gratuita, tiene un **dev domain fijo** asignado automáticamente a la cuenta (algo como `https://create-dork-petroleum.ngrok-free.dev`), que se reutiliza solo con `ngrok http <puerto>` — sin pasar `--domain` — y persiste mientras la cuenta exista. Lo confirmamos porque, tras reiniciar la máquina para el Día 4, `ngrok http 5678` levantó exactamente la misma URL que estaba configurada en Meta desde el Día 2 (verificado comparando el log de esa sesión, `ngrok.log`, contra el arranque de hoy).
+Durante el Día 2 asumimos que ngrok asigna un dominio nuevo al azar en cada reinicio. **Es incorrecto.** Toda cuenta de ngrok, incluso gratuita, tiene un **dev domain fijo** asignado automáticamente a la cuenta (algo como `https://<your-subdomain>.ngrok-free.dev`), que se reutiliza solo con `ngrok http <puerto>` — sin pasar `--domain` — y persiste mientras la cuenta exista. Lo confirmamos porque, tras reiniciar la máquina para el Día 4, `ngrok http 5678` levantó exactamente la misma URL que estaba configurada en Meta desde el Día 2 (verificado comparando el log de esa sesión, `ngrok.log`, contra el arranque de hoy).
 
 En la práctica: **no hace falta reconfigurar el Callback URL en Meta en cada reinicio de ngrok**, salvo que se cierre sesión en la cuenta de ngrok o se libere/cambie el dev domain manualmente desde el dashboard.
 
@@ -200,12 +200,12 @@ Pensábamos que la cadena era simplemente: **Meta → tu webhook**. Configurás 
 
 ```mermaid
 graph TD
-    A[Capa 1: Número de teléfono<br/>+1 555 666 8817<br/>Por donde entra el mensaje] --> B[Capa 2: WABA<br/>WhatsApp Business Account<br/>id: 2468202600345069]
+    A[Capa 1: Número de teléfono<br/>+1 555 666 8817<br/>Por donde entra el mensaje] --> B[Capa 2: WABA<br/>WhatsApp Business Account<br/>id: <WABA_ID>]
     B -->|"¿A qué App le reenvío esto?<br/>ESTE LINK hay que crearlo aparte"| C[Capa 3: App de Meta<br/>Accelerate Restaurant Bot<br/>Tiene la URL de webhook configurada]
 ```
 
 - **Capa 1 — Número de teléfono**: el número de prueba que te dio Meta. Ahí llega físicamente el mensaje del cliente.
-- **Capa 2 — WABA (WhatsApp Business Account)**: es el "contenedor" administrativo que agrupa uno o más números de teléfono. Tiene su propio ID (`2468202600345069` en nuestro caso).
+- **Capa 2 — WABA (WhatsApp Business Account)**: es el "contenedor" administrativo que agrupa uno o más números de teléfono. Tiene su propio ID (`<WABA_ID>` en nuestro caso).
 - **Capa 3 — App de Meta**: la aplicación que registraste en developers.facebook.com (`Accelerate Restaurant Bot`), donde configuramos la URL de callback y el verify token.
 
 **El problema real de anoche**: configuramos perfecto la Capa 3 (URL, token, campo `messages` suscrito — todo eso lo confirmamos con el check verde, una y otra vez). Pero **nunca conectamos la Capa 2 con la Capa 3**. Ese link — "el WABA está autorizado a mandarle mensajes a esta App" — se crea con una llamada a la API aparte, y **no aparece en ningún botón del panel visual que usamos**.
@@ -219,12 +219,12 @@ El botón "Enviar a mi servidor" que probamos mil veces anoche **manda el payloa
 Con una API key con permisos de `whatsapp_business_management`, se hacen dos llamadas:
 
 ```
-GET https://graph.facebook.com/v21.0/2468202600345069/subscribed_apps
+GET https://graph.facebook.com/v21.0/<WABA_ID>/subscribed_apps
 ```
 (chequea si hay alguna App vinculada — si devuelve `"data": []`, confirma el diagnóstico)
 
 ```
-POST https://graph.facebook.com/v21.0/2468202600345069/subscribed_apps
+POST https://graph.facebook.com/v21.0/<WABA_ID>/subscribed_apps
 ```
 (crea el link entre el WABA y la App actual)
 
@@ -240,7 +240,7 @@ No hace falta recrear nada — es un paso puntual, una sola vez, sobre la app qu
 | `WHATSAPP_PHONE_ID` | Panel de Meta, se ve fijo en el número de prueba | Identifica DESDE qué número se manda un mensaje | URL del nodo "Responder por WhatsApp" (`.../{PHONE_ID}/messages`) |
 | Verify Token | Inventado por vos | Confirma que quien registra el webhook sos vos, no un tercero | Nodo "Verificar token" en n8n, y campo "Identificador de verificación" en Meta |
 | `N8N_API_KEY` | Panel de n8n, Settings → API | Permite que scripts externos (o Claude Code) creen/actualicen workflows sin usar la interfaz web | Usado en los scripts de PowerShell que corrimos para actualizar el workflow |
-| WABA ID (`2468202600345069`) | Fijo, se ve en el panel de Meta | Identifica la cuenta de WhatsApp Business | Usado para el link Capa 2 ↔ Capa 3 (`subscribed_apps`) |
+| WABA ID (`<WABA_ID>`) | Fijo, se ve en el panel de Meta | Identifica la cuenta de WhatsApp Business | Usado para el link Capa 2 ↔ Capa 3 (`subscribed_apps`) |
 
 **Ninguna de estas claves viaja "de un lado a otro" en el sentido de que un sistema se la pase a otro por la red en texto plano** — cada una vive guardada en el lugar que la necesita (el `.env` de tu proyecto, o dentro de la configuración de cada nodo de n8n), y se usa ahí mismo para autenticar esa llamada puntual.
 

@@ -4,7 +4,8 @@ A WhatsApp agent for a restaurant that takes table reservations and answers menu
 and policy questions, using Claude tool use as the router and a custom RAG
 pipeline over the FAQ.
 
-Built in 7 calendar days (August 2026) for a restaurant client.
+Built in 7 days (August 2026) as a working prototype for a real restaurant. This public
+version runs on sample FAQ data and is not deployed.
 
 ## What it does
 
