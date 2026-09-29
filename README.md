@@ -1,4 +1,4 @@
-# whatsapp-rag-agent
+# restaurant-rag-assistant
 
 A WhatsApp agent for a restaurant that takes table reservations and answers menu
 and policy questions, using Claude tool use as the router and a custom RAG
@@ -104,8 +104,8 @@ Requires an Anthropic API key and a Voyage AI API key (see
 [`.env.example`](.env.example)).
 
 ```bash
-git clone https://github.com/nachixxs/whatsapp-rag-agent.git
-cd whatsapp-rag-agent
+git clone https://github.com/nachixxs/restaurant-rag-assistant.git
+cd restaurant-rag-assistant
 python -m venv venv
 venv\Scripts\activate          # Windows; on macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt
